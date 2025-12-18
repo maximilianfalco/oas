@@ -1,0 +1,80 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nested Discriminator Example",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/items": {
+      "post": {
+        "summary": "Create item",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ItemWithType"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ItemWithType": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Book"
+          },
+          {
+            "$ref": "#/components/schemas/Movie"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "book": "#/components/schemas/Book",
+            "movie": "#/components/schemas/Movie"
+          }
+        }
+      },
+      "Book": {
+        "type": "object",
+        "required": ["type", "author"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["book"]
+          },
+          "author": {
+            "type": "string"
+          }
+        }
+      },
+      "Movie": {
+        "type": "object",
+        "required": ["type", "director"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["movie"]
+          },
+          "director": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

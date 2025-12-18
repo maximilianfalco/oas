@@ -10,6 +10,7 @@ let ably: Oas;
 let circular: Oas;
 let discriminators: Oas;
 let embeddedDiscriminator: Oas;
+let embeddedDiscriminatorWithMissingDiscriminator: Oas;
 let parametersCommon: Oas;
 let petstore: Oas;
 let petstore_31: Oas;
@@ -33,6 +34,13 @@ describe('#getParametersAsJSONSchema()', () => {
       .then(r => r.default)
       .then(Oas.init);
     await embeddedDiscriminator.dereference();
+
+    embeddedDiscriminatorWithMissingDiscriminator = await import(
+      '../../__datasets__/embedded-discriminator-with-missing-discriminator.json'
+    )
+      .then(r => r.default)
+      .then(Oas.init);
+    await embeddedDiscriminatorWithMissingDiscriminator.dereference();
 
     parametersCommon = await import('@readme/oas-examples/3.0/json/parameters-common.json')
       .then(r => r.default)
@@ -1541,6 +1549,59 @@ describe('#getParametersAsJSONSchema()', () => {
           $schema: 'http://json-schema.org/draft-04/schema#',
         });
       });
+
+      it('should infer children from nested oneOf when operation-level oneOf has no discriminator but child schema has discriminator', () => {
+        // Operation-level oneOf references ItemWithType (no discriminator at operation level)
+        // ItemWithType has oneOf with Book/Movie and has a discriminator
+        // We should expand ItemWithType to show Book and Movie in the request body
+        const jsonSchema = embeddedDiscriminatorWithMissingDiscriminator
+          .operation('/items', 'post')
+          .getParametersAsJSONSchema();
+
+        const bodySchema = jsonSchema?.find(s => s.type === 'body');
+        expect(bodySchema).toBeDefined();
+
+        const schema = bodySchema?.schema as SchemaObject & {
+          components?: unknown;
+        };
+
+        const { components: _, ...schemaToTest } = schema;
+        expect(schemaToTest).toStrictEqual({
+          oneOf: [
+            {
+              type: 'object',
+              required: ['type', 'author'],
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['book'],
+                },
+                author: {
+                  type: 'string',
+                },
+              },
+              'x-readme-ref-name': 'Book',
+            },
+            {
+              type: 'object',
+              required: ['type', 'director'],
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['movie'],
+                },
+                director: {
+                  type: 'string',
+                },
+              },
+              'x-readme-ref-name': 'Movie',
+            },
+          ],
+          $schema: 'http://json-schema.org/draft-04/schema#',
+        });
+      });
+    });
+
     });
   });
 });
