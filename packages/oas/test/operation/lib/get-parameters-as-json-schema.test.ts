@@ -1601,7 +1601,5 @@ describe('#getParametersAsJSONSchema()', () => {
         });
       });
     });
-
-    });
   });
 });
