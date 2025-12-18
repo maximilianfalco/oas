@@ -1,0 +1,191 @@
+openapi: 3.0.0
+info:
+  title: Discriminator in OneOf API
+  version: 1.0.0
+  description: API demonstrating discriminators nested within oneOf structures, including cases with and without discriminators at the operation level.
+servers:
+  - url: http://localhost:3000
+paths:
+  /pets:
+    post:
+      summary: Create a pet
+      description: Creates a pet with nested discriminator in oneOf structure. This endpoint has a discriminator at the operation level.
+      operationId: createPet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/Dog'
+                - $ref: '#/components/schemas/Cat'
+                - $ref: '#/components/schemas/ExoticPet'
+              discriminator:
+                propertyName: pet_type
+                mapping:
+                  dog: '#/components/schemas/Dog'
+                  cat: '#/components/schemas/Cat'
+                  exotic: '#/components/schemas/ExoticPet'
+      responses:
+        '200':
+          description: Pet created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  message:
+                    type: string
+  /items:
+    post:
+      summary: Create item
+      description: Creates an item where parent uses oneOf without discriminator, but child ItemWithType has discriminator.
+      operationId: createItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ItemWithType'
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Dog:
+      type: object
+      properties:
+        pet_type:
+          type: string
+          enum: [dog]
+        name:
+          type: string
+        breed:
+          type: string
+      required:
+        - pet_type
+        - name
+        - breed
+    Cat:
+      type: object
+      properties:
+        pet_type:
+          type: string
+          enum: [cat]
+        name:
+          type: string
+        color:
+          type: string
+      required:
+        - pet_type
+        - name
+        - color
+    ExoticPet:
+      oneOf:
+        - $ref: '#/components/schemas/Bird'
+        - $ref: '#/components/schemas/Reptile'
+        - $ref: '#/components/schemas/Fish'
+      discriminator:
+        propertyName: exotic_type
+        mapping:
+          bird: '#/components/schemas/Bird'
+          reptile: '#/components/schemas/Reptile'
+          fish: '#/components/schemas/Fish'
+    Bird:
+      type: object
+      properties:
+        pet_type:
+          type: string
+          enum: [exotic]
+        exotic_type:
+          type: string
+          enum: [bird]
+        name:
+          type: string
+        wingspan:
+          type: number
+        canFly:
+          type: boolean
+      required:
+        - pet_type
+        - exotic_type
+        - name
+        - wingspan
+        - canFly
+    Reptile:
+      type: object
+      properties:
+        pet_type:
+          type: string
+          enum: [exotic]
+        exotic_type:
+          type: string
+          enum: [reptile]
+        name:
+          type: string
+        isVenomous:
+          type: boolean
+        habitat:
+          type: string
+      required:
+        - pet_type
+        - exotic_type
+        - name
+        - isVenomous
+        - habitat
+    Fish:
+      type: object
+      properties:
+        pet_type:
+          type: string
+          enum: [exotic]
+        exotic_type:
+          type: string
+          enum: [fish]
+        name:
+          type: string
+        waterType:
+          type: string
+          enum: [freshwater, saltwater]
+        tankSize:
+          type: number
+      required:
+        - pet_type
+        - exotic_type
+        - name
+        - waterType
+        - tankSize
+    ItemWithType:
+      oneOf:
+        - $ref: '#/components/schemas/Book'
+        - $ref: '#/components/schemas/Movie'
+      discriminator:
+        propertyName: type
+        mapping:
+          book: '#/components/schemas/Book'
+          movie: '#/components/schemas/Movie'
+    Book:
+      type: object
+      required:
+        - type
+        - author
+      properties:
+        type:
+          type: string
+          enum: [book]
+        author:
+          type: string
+    Movie:
+      type: object
+      required:
+        - type
+        - director
+      properties:
+        type:
+          type: string
+          enum: [movie]
+        director:
+          type: string
