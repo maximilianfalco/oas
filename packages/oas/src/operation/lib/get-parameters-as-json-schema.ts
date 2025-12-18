@@ -158,6 +158,58 @@ export function getParametersAsJSONSchema(
   }
 
   /**
+   * Expands oneOf schemas that reference component schemas with discriminators.
+   * When an operation-level oneOf doesn't have a discriminator but references a schema
+   * that has a discriminator with oneOf, we should expand it to show the children.
+   *
+   * @param schema The schema to potentially expand
+   * @returns The expanded schema if expansion occurred, otherwise the original schema
+   */
+  function expandNestedDiscriminatorOneOf(schema: SchemaObject): SchemaObject {
+    // Only process if this is an object schema with a oneOf array and no discriminator
+    if (
+      !schema ||
+      typeof schema !== 'object' ||
+      !('oneOf' in schema) ||
+      !Array.isArray(schema.oneOf) ||
+      'discriminator' in schema
+    ) {
+      return schema;
+    }
+
+    if (!api?.components?.schemas || typeof api.components.schemas !== 'object') {
+      return schema;
+    }
+
+    const schemas = api.components.schemas as Record<string, SchemaObject>;
+    const expandedOneOf: SchemaObject[] = [];
+
+    for (const item of schema.oneOf) {
+      const refName = (item as SchemaObject & { 'x-readme-ref-name'?: string })['x-readme-ref-name'];
+      if (refName && schemas[refName]) {
+        const componentSchema = schemas[refName];
+
+        if ('oneOf' in componentSchema && Array.isArray(componentSchema.oneOf) && 'discriminator' in componentSchema) {
+          expandedOneOf.push(...(componentSchema.oneOf as SchemaObject[]));
+        } else {
+          expandedOneOf.push(item as SchemaObject);
+        }
+      } else {
+        expandedOneOf.push(item as SchemaObject);
+      }
+    }
+
+    // If we expanded anything, return the schema with the expanded oneOf
+    if (expandedOneOf.length !== schema.oneOf.length) {
+      const expanded = { ...schema };
+      (expanded as Record<string, unknown>).oneOf = expandedOneOf;
+      return expanded;
+    }
+
+    return schema;
+  }
+
+  /**
    *
    */
   function transformRequestBody(): SchemaWrapper {
@@ -201,16 +253,19 @@ export function getParametersAsJSONSchema(
       return null;
     }
 
+    // Expand nested discriminator oneOf schemas if needed
+    const expandedSchema = expandNestedDiscriminatorOneOf(cleanedSchema);
+
     return {
       type,
       label: types[type],
-      schema: isPrimitive(cleanedSchema)
-        ? cleanedSchema
+      schema: isPrimitive(expandedSchema)
+        ? expandedSchema
         : {
-            ...cleanedSchema,
-            $schema: getSchemaVersionString(cleanedSchema, api),
+            ...expandedSchema,
+            $schema: getSchemaVersionString(expandedSchema, api),
           },
-      deprecatedProps: getDeprecated(cleanedSchema, type),
+      deprecatedProps: getDeprecated(expandedSchema, type),
       ...(description ? { description } : {}),
     };
   }
